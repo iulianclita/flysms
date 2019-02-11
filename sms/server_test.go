@@ -2,6 +2,7 @@ package sms_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,19 +36,85 @@ func TestServer_createMessage(t *testing.T) {
 				statusCode: http.StatusMethodNotAllowed,
 				response: sms.Response{
 					Success: false,
-					Error:   http.StatusText(http.StatusMethodNotAllowed),
+					Error:   "Request not allowed (invalid HTTP method)",
 				},
 			},
 		},
+
 		"Invalid JSON": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"invalid_json"}`),
 			want: wantType{
+				statusCode: http.StatusBadRequest,
+				response: sms.Response{
+					Success: false,
+					Error:   "Bad request (invalid payload json structure)",
+				},
+			},
+		},
+
+		"Invalid recipient value": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":123456, "originator": "MesssageBird", "message": "This is a test message"}`),
+			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
 					Success: false,
-					Error:   http.StatusText(http.StatusUnprocessableEntity),
+					Error:   "Invalid parameter (recipient value is out of bounds)",
+				},
+			},
+		},
+
+		"Missing originator value": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "", "message": "This is a test message"}`),
+			want: wantType{
+				statusCode: http.StatusUnprocessableEntity,
+				response: sms.Response{
+					Success: false,
+					Error:   "Missing parameter (originator value is not present)",
+				},
+			},
+		},
+
+		"Invalid originator value": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "VeryLongNameForThisOriginator", "message": "This is a test message"}`),
+			want: wantType{
+				statusCode: http.StatusUnprocessableEntity,
+				response: sms.Response{
+					Success: false,
+					Error:   "Invalid parameter (originator value is to long)",
+				},
+			},
+		},
+
+		"Missing message value": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": ""}`),
+			want: wantType{
+				statusCode: http.StatusUnprocessableEntity,
+				response: sms.Response{
+					Success: false,
+					Error:   "Missing parameter (message value is not present)",
+				},
+			},
+		},
+
+		"Invalid message value": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(fmt.Sprintf(`{"recipient":1234567890, "originator": "MessageBird", "message": "%s"}`, strings.Repeat("X", 161))),
+			want: wantType{
+				statusCode: http.StatusUnprocessableEntity,
+				response: sms.Response{
+					Success: false,
+					Error:   "Invalid parameter (message value is to long)",
 				},
 			},
 		},
