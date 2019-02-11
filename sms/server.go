@@ -47,17 +47,9 @@ func NewServer(buf int) *Server {
 func (s *Server) createMessage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Validate HTTP method
+
 		if r.Method != http.MethodPost {
-			res := Response{
-				Success: false,
-				Error:   "Request not allowed (invalid HTTP method)",
-			}
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusMethodNotAllowed, "Request not allowed (invalid HTTP method)")
 			return
 		}
 
@@ -65,16 +57,7 @@ func (s *Server) createMessage() http.HandlerFunc {
 		var req Request
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			res := Response{
-				Success: false,
-				Error:   "Bad request (invalid payload json structure)",
-			}
-			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusBadRequest, "Bad request (invalid payload json structure)")
 			return
 		}
 
@@ -83,80 +66,35 @@ func (s *Server) createMessage() http.HandlerFunc {
 		recp := fmt.Sprintf("%d", req.Recipient)
 
 		if len(recp) < 7 || len(recp) > 15 {
-			res := Response{
-				Success: false,
-				Error:   "Invalid parameter (recipient value is out of bounds)",
-			}
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (recipient value is out of bounds)")
 			return
 		}
 
 		// Validate originator property value in json input
 		// Make sure it is present
 		if len(req.Originator) == 0 {
-			res := Response{
-				Success: false,
-				Error:   "Missing parameter (originator value is not present)",
-			}
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusUnprocessableEntity, "Missing parameter (originator value is not present)")
 			return
 		}
 
 		// Validate originator property value in json input
 		// Make sure it's length does not go beyond 11 characters
 		if len(req.Originator) > 11 {
-			res := Response{
-				Success: false,
-				Error:   "Invalid parameter (originator value is to long)",
-			}
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (originator value is to long)")
 			return
 		}
 
 		// Validate message property value in json input
 		// Make sure it is present
 		if len(req.Message) == 0 {
-			res := Response{
-				Success: false,
-				Error:   "Missing parameter (message value is not present)",
-			}
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusUnprocessableEntity, "Missing parameter (message value is not present)")
 			return
 		}
 
 		// Validate message property value in json input
 		// Make sure it's length does not go beyond 160 characters
 		if len(req.Message) > 160 {
-			res := Response{
-				Success: false,
-				Error:   "Invalid parameter (message value is to long)",
-			}
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Header().Set("Cotent-Type", "application/json")
-			w.Header().Set("Accept", "application/json")
-			if err := json.NewEncoder(w).Encode(&res); err != nil {
-				log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
-			}
+			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (message value is to long)")
 			return
 		}
 	}
@@ -188,3 +126,16 @@ func (s *Server) Start() {
 
 // 	}
 // }
+
+func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+	res := Response{
+		Success: false,
+		Error:   message,
+	}
+	w.WriteHeader(statusCode)
+	w.Header().Set("Cotent-Type", "application/json")
+	w.Header().Set("Accept", "application/json")
+	if err := json.NewEncoder(w).Encode(&res); err != nil {
+		log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
+	}
+}
