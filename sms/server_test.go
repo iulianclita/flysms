@@ -118,6 +118,23 @@ func TestServer_createMessage(t *testing.T) {
 				},
 			},
 		},
+
+		"Created message": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			want: wantType{
+				statusCode: http.StatusCreated,
+				response: sms.Response{
+					Success: true,
+					Data: struct {
+						ID int64 `json:"id"`
+					}{
+						ID: 123,
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {

@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-// Request ...
+// Request is the representation of an SMS request
+// and is extracted from the HTTP request body
 type Request struct {
 	Recipient  int64  `json:"recipient"`
 	Originator string `json:"originator"`
@@ -18,7 +19,8 @@ type Request struct {
 	resCh      chan Response
 }
 
-// Response ...
+// Response is the representation of an HTTP response
+// after succesfully handling a HTTP SMS request
 type Response struct {
 	Success bool `json:"success"`
 	Data    struct {
@@ -27,7 +29,7 @@ type Response struct {
 	Error string `json:"error,omitempty"`
 }
 
-// Server ...
+// Server is the frontend server that communicates to our SMS API
 type Server struct {
 	*http.ServeMux
 	reqCh chan *Request
@@ -167,14 +169,14 @@ func (s *Server) processRequest(req *Request) {
 	var res Response
 
 	go func() {
-		// make the API call
-		time.Sleep(time.Second)
+		// fake the API call
+		time.Sleep(1 * time.Second)
 		res = Response{
 			Success: true,
 			Data: struct {
 				ID int64 `json:"id"`
 			}{
-				ID: time.Now().UnixNano(),
+				ID: 123,
 			},
 		}
 		close(done)
@@ -184,8 +186,10 @@ func (s *Server) processRequest(req *Request) {
 	case <-done:
 		select {
 		case req.resCh <- res:
+			log.Println("Succesfully sent response")
 		default:
-			log.Printf("Cannot send response")
+			// In theory, this should never happen
+			log.Printf("Failed to send response %#v for request %#v\n", res, req)
 		}
 	case <-req.ctx.Done():
 		log.Println("Request timeout (process took to long to finish)")
