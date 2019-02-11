@@ -15,7 +15,7 @@ type Request struct {
 	Originator string `json:"originator"`
 	Message    string `json:"message"`
 	ctx        context.Context
-	resCh      chan *Response
+	resCh      chan Response
 }
 
 // Response ...
@@ -46,18 +46,23 @@ func NewServer(buf int) *Server {
 
 func (s *Server) createMessage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var res Response
 		// Validate HTTP method
-
 		if r.Method != http.MethodPost {
-			sendErrorResponse(w, http.StatusMethodNotAllowed, "Request not allowed (invalid HTTP method)")
+			res = Response{
+				Error: "Request not allowed (invalid HTTP method)",
+			}
+			sendResponse(w, http.StatusMethodNotAllowed, res)
 			return
 		}
 
 		// Validate JSON structure
 		var req Request
-
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			sendErrorResponse(w, http.StatusBadRequest, "Bad request (invalid payload json structure)")
+			res = Response{
+				Error: "Bad request (invalid payload json structure)",
+			}
+			sendResponse(w, http.StatusBadRequest, res)
 			return
 		}
 
@@ -66,36 +71,79 @@ func (s *Server) createMessage() http.HandlerFunc {
 		recp := fmt.Sprintf("%d", req.Recipient)
 
 		if len(recp) < 7 || len(recp) > 15 {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (recipient value is out of bounds)")
+			res = Response{
+				Error: "Invalid parameter (recipient value is out of bounds)",
+			}
+			sendResponse(w, http.StatusUnprocessableEntity, res)
 			return
 		}
 
 		// Validate originator property value in json input
 		// Make sure it is present
 		if len(req.Originator) == 0 {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Missing parameter (originator value is not present)")
+			res = Response{
+				Error: "Missing parameter (originator value is not present)",
+			}
+			sendResponse(w, http.StatusUnprocessableEntity, res)
 			return
 		}
 
 		// Validate originator property value in json input
 		// Make sure it's length does not go beyond 11 characters
 		if len(req.Originator) > 11 {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (originator value is to long)")
+			res = Response{
+				Error: "Invalid parameter (originator value is to long)",
+			}
+			sendResponse(w, http.StatusUnprocessableEntity, res)
 			return
 		}
 
 		// Validate message property value in json input
 		// Make sure it is present
 		if len(req.Message) == 0 {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Missing parameter (message value is not present)")
+			res = Response{
+				Error: "Missing parameter (message value is not present)",
+			}
+			sendResponse(w, http.StatusUnprocessableEntity, res)
 			return
 		}
 
 		// Validate message property value in json input
 		// Make sure it's length does not go beyond 160 characters
 		if len(req.Message) > 160 {
-			sendErrorResponse(w, http.StatusUnprocessableEntity, "Invalid parameter (message value is to long)")
+			res = Response{
+				Error: "Invalid parameter (message value is to long)",
+			}
+			sendResponse(w, http.StatusUnprocessableEntity, res)
 			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		defer cancel()
+
+		req.ctx = ctx
+		req.resCh = make(chan Response)
+
+		select {
+		case s.reqCh <- &req:
+			log.Printf("Accepted incoming request: %#v\n", req)
+		default:
+			log.Printf("Dropped incoming request: %#v\n", req)
+			res = Response{
+				Error: "Request limit exceeded (request has been dropped)",
+			}
+			sendResponse(w, http.StatusTooManyRequests, res)
+			return
+		}
+
+		select {
+		case res := <-req.resCh:
+			sendResponse(w, http.StatusCreated, res)
+		case <-ctx.Done():
+			res = Response{
+				Error: "Request timeout (process took to long to finish)",
+			}
+			sendResponse(w, http.StatusRequestTimeout, res)
 		}
 	}
 }
@@ -103,37 +151,50 @@ func (s *Server) createMessage() http.HandlerFunc {
 // Start starts the server
 func (s *Server) Start() {
 	s.HandleFunc("/messages", s.createMessage())
-	// go s.handleRequests()
+	go s.handleRequests()
 }
 
-// func (s *Server) handleRequests() {
-// 	ticker := time.Tick(s.rate)
-// 	for req := range s.reqCh {
-// 		<-ticker
-// 		go s.processRequest(req)
-// 	}
-// }
-
-// func (s *Server) processRequest(req *Request) {
-// 	done := make(chan struct{})
-// 	go func() {
-// 		// make the API call
-// 		close(done)
-// 	}()
-
-// 	select {
-// 	case <-done:
-
-// 	}
-// }
-
-func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
-	res := Response{
-		Success: false,
-		Error:   message,
+func (s *Server) handleRequests() {
+	ticker := time.Tick(s.rate)
+	for req := range s.reqCh {
+		<-ticker
+		go s.processRequest(req)
 	}
+}
+
+func (s *Server) processRequest(req *Request) {
+	done := make(chan struct{})
+	var res Response
+
+	go func() {
+		// make the API call
+		time.Sleep(time.Second)
+		res = Response{
+			Success: true,
+			Data: struct {
+				ID int64 `json:"id"`
+			}{
+				ID: time.Now().UnixNano(),
+			},
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		select {
+		case req.resCh <- res:
+		default:
+			log.Printf("Cannot send response")
+		}
+	case <-req.ctx.Done():
+		log.Println("Request timeout (process took to long to finish)")
+	}
+}
+
+func sendResponse(w http.ResponseWriter, statusCode int, res Response) {
 	w.WriteHeader(statusCode)
-	w.Header().Set("Cotent-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Accept", "application/json")
 	if err := json.NewEncoder(w).Encode(&res); err != nil {
 		log.Fatalf("Cannot encode value %#v; Error: %v", res, err)

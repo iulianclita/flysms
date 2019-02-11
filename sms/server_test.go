@@ -28,7 +28,7 @@ func TestServer_createMessage(t *testing.T) {
 		payload    io.Reader
 		want       wantType
 	}{
-		"Method not allowed": {
+		"HTTP Method not allowed": {
 			httpMethod: http.MethodGet,
 			path:       "/messages",
 			payload:    nil,
