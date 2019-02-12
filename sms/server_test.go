@@ -22,17 +22,17 @@ func TestServer_createMessage(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		httpMethod    string
-		path          string
-		payload       io.Reader
-		serverOptions sms.Config
-		want          wantType
+		httpMethod   string
+		path         string
+		payload      io.Reader
+		serverConfig sms.Config
+		want         wantType
 	}{
 		"HTTP Method not allowed": {
 			httpMethod: http.MethodGet,
 			path:       "/messages",
 			payload:    nil,
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -50,7 +50,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"invalid_json"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -68,7 +68,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":123456, "originator": "MesssageBird", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -86,7 +86,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -104,7 +104,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "VeryLongNameForThisOriginator", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -122,7 +122,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": ""}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -140,7 +140,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(fmt.Sprintf(`{"recipient":1234567890, "originator": "MessageBird", "message": "%s"}`, strings.Repeat("X", 161))),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -158,7 +158,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -176,7 +176,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   500 * time.Millisecond,
 				ThrottleRate: time.Second,
@@ -195,7 +195,7 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
-			serverOptions: sms.Config{
+			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
@@ -221,7 +221,7 @@ func TestServer_createMessage(t *testing.T) {
 			r := httptest.NewRequest(tc.httpMethod, tc.path, tc.payload)
 			w := httptest.NewRecorder()
 
-			srv := sms.NewServer(tc.serverOptions)
+			srv := sms.NewServer(tc.serverConfig)
 			srv.Run()
 
 			srv.ServeHTTP(w, r)

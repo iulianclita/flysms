@@ -54,8 +54,7 @@ type Config struct {
 	APIClient    *Client
 }
 
-// NewServer creates a new server with a given buffer size
-// which will be used to accumulate incoming requests
+// NewServer creates a new server from the given config
 func NewServer(cfg Config) *Server {
 	return &Server{
 		ServeMux:     http.NewServeMux(),
