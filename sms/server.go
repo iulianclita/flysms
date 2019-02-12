@@ -221,7 +221,7 @@ func (s *Server) processRequest(req *Request) {
 			log.Printf("Failed to send response %#v for request %#v\n", res, req)
 		}
 	case <-req.ctx.Done():
-		log.Println("Request timeout (process took to long to finish)")
+		log.Println("The API request timed out")
 	}
 }
 
