@@ -171,6 +171,49 @@ func TestServer_createMessage(t *testing.T) {
 				},
 			},
 		},
+
+		"API request timeout": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   500 * time.Millisecond,
+				ThrottleRate: time.Second,
+				APIClient:    &sms.Client{},
+			},
+			want: wantType{
+				statusCode: http.StatusRequestTimeout,
+				response: sms.Response{
+					Success: false,
+					Error:   "Request timeout (process took to long to finish)",
+				},
+			},
+		},
+
+		"Created SMS": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+				APIClient:    &sms.Client{},
+			},
+			want: wantType{
+				statusCode: http.StatusCreated,
+				response: sms.Response{
+					Success: true,
+					Data: sms.Content{
+						ID:         123,
+						Recipient:  1234567890,
+						Originator: "MessageBird",
+						Message:    "This is a test message",
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {

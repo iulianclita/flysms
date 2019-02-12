@@ -19,15 +19,21 @@ type Request struct {
 	Message    string `json:"message"`
 }
 
+// Content keeps together all the parameters associated with a SMS
+type Content struct {
+	ID         int64  `json:"id"`
+	Recipient  int64  `json:"recipient"`
+	Originator string `json:"originator"`
+	Message    string `json:"message"`
+}
+
 // Response is the representation of an HTTP response
 // after succesfully handling a HTTP SMS request
 type Response struct {
 	statusCode int
-	Success    bool `json:"success"`
-	Data       struct {
-		ID int64 `json:"id"`
-	} `json:"data,omitempty"`
-	Error string `json:"error,omitempty"`
+	Success    bool    `json:"success"`
+	Data       Content `json:"data,omitempty"`
+	Error      string  `json:"error,omitempty"`
 }
 
 // Server is the frontend server that communicates to our SMS API
@@ -141,7 +147,7 @@ func (s *Server) createMessage() http.HandlerFunc {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.TODO(), s.reqTimeout)
 		defer cancel()
 
 		req.ctx = ctx
@@ -200,13 +206,16 @@ func (s *Server) processRequest(req *Request) {
 			}
 			return
 		}
-		// Make the API call
+		// Fake the API call
+		time.Sleep(100 * time.Millisecond)
 		res = Response{
-			Success: true,
-			Data: struct {
-				ID int64 `json:"id"`
-			}{
-				ID: 123,
+			statusCode: http.StatusCreated,
+			Success:    true,
+			Data: Content{
+				ID:         123,
+				Recipient:  req.Recipient,
+				Originator: req.Originator,
+				Message:    req.Message,
 			},
 		}
 	}()
