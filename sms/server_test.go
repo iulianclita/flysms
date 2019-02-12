@@ -236,13 +236,13 @@ func TestServer_createMessage(t *testing.T) {
 			defer res.Body.Close()
 
 			if err != nil {
-				t.Fatal("Failed to read response body:", err)
+				t.Fatalf("Failed to read response body: %v", err)
 			}
 
 			var smsRes sms.Response
 
 			if err := json.Unmarshal(body, &smsRes); err != nil {
-				t.Fatal("Failed to unmarshal json response body:", err)
+				t.Fatalf("Failed to unmarshal json response body: %v", err)
 			}
 
 			if tc.want.response.Success {
