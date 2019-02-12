@@ -245,9 +245,25 @@ func TestServer_createMessage(t *testing.T) {
 				t.Fatal("Failed to unmarshal json response body:", err)
 			}
 
-			if smsRes != tc.want.response {
-				t.Errorf("HTTP json response was %#v; want %#v", smsRes, tc.want.response)
+			if tc.want.response.Success {
+				if smsRes.Success != tc.want.response.Success {
+					t.Errorf("Success was %t; want %t", smsRes.Success, tc.want.response.Success)
+				}
+				if smsRes.Data.Recipient != tc.want.response.Data.Recipient {
+					t.Errorf("Recipient was %d; want %d", smsRes.Data.Recipient, tc.want.response.Data.Recipient)
+				}
+				if smsRes.Data.Originator != tc.want.response.Data.Originator {
+					t.Errorf("Originator was %s; want %s", smsRes.Data.Originator, tc.want.response.Data.Originator)
+				}
+				if smsRes.Data.Message != tc.want.response.Data.Message {
+					t.Errorf("Message was %s; want %s", smsRes.Data.Message, tc.want.response.Data.Message)
+				}
+			} else {
+				if smsRes != tc.want.response {
+					t.Errorf("HTTP json response was %#v; want %#v", smsRes, tc.want.response)
+				}
 			}
+
 		})
 	}
 }

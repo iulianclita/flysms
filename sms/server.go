@@ -212,7 +212,7 @@ func (s *Server) processRequest(req *Request) {
 			statusCode: http.StatusCreated,
 			Success:    true,
 			Data: Content{
-				ID:         123,
+				ID:         time.Now().UnixNano(),
 				Recipient:  req.Recipient,
 				Originator: req.Originator,
 				Message:    req.Message,
