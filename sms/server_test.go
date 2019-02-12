@@ -9,13 +9,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/iulianclita/messagebird/sms"
 )
 
 func TestServer_createMessage(t *testing.T) {
-	srv := sms.NewServer(100)
-	srv.Start()
 
 	type wantType struct {
 		statusCode int
@@ -23,15 +22,21 @@ func TestServer_createMessage(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		httpMethod string
-		path       string
-		payload    io.Reader
-		want       wantType
+		httpMethod    string
+		path          string
+		payload       io.Reader
+		serverOptions sms.Config
+		want          wantType
 	}{
 		"HTTP Method not allowed": {
 			httpMethod: http.MethodGet,
 			path:       "/messages",
 			payload:    nil,
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusMethodNotAllowed,
 				response: sms.Response{
@@ -45,6 +50,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"invalid_json"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusBadRequest,
 				response: sms.Response{
@@ -58,6 +68,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":123456, "originator": "MesssageBird", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
@@ -71,6 +86,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
@@ -84,6 +104,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "VeryLongNameForThisOriginator", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
@@ -97,6 +122,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": ""}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
@@ -110,6 +140,11 @@ func TestServer_createMessage(t *testing.T) {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(fmt.Sprintf(`{"recipient":1234567890, "originator": "MessageBird", "message": "%s"}`, strings.Repeat("X", 161))),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
 				statusCode: http.StatusUnprocessableEntity,
 				response: sms.Response{
@@ -119,19 +154,20 @@ func TestServer_createMessage(t *testing.T) {
 			},
 		},
 
-		"Created message": {
+		"API Client not set": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
 			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			serverOptions: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
 			want: wantType{
-				statusCode: http.StatusCreated,
+				statusCode: http.StatusInternalServerError,
 				response: sms.Response{
-					Success: true,
-					Data: struct {
-						ID int64 `json:"id"`
-					}{
-						ID: 123,
-					},
+					Success: false,
+					Error:   "Internal error (API client not set)",
 				},
 			},
 		},
@@ -141,6 +177,9 @@ func TestServer_createMessage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := httptest.NewRequest(tc.httpMethod, tc.path, tc.payload)
 			w := httptest.NewRecorder()
+
+			srv := sms.NewServer(tc.serverOptions)
+			srv.Run()
 
 			srv.ServeHTTP(w, r)
 
