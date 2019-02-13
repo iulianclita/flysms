@@ -21,10 +21,12 @@ type Request struct {
 
 // Content keeps together all the parameters associated with a SMS
 type Content struct {
-	ID         int64  `json:"id"`
+	ID         string `json:"id"`
 	Recipient  int64  `json:"recipient"`
 	Originator string `json:"originator"`
 	Message    string `json:"message"`
+	Status     string `json:"status"`
+	Created    string `json:"created"`
 }
 
 // Response is the representation of an HTTP response
@@ -39,29 +41,29 @@ type Response struct {
 // Server is the frontend server that communicates to our SMS API
 type Server struct {
 	*http.ServeMux
-	reqCh        chan *Request
-	buf          int
-	reqTimeout   time.Duration
-	throttleRate time.Duration
-	apiClient    *Client
+	reqCh         chan *Request
+	buf           int
+	reqTimeout    time.Duration
+	throttleRate  time.Duration
+	messageClient *Client
 }
 
 // Config is a collection of configuration options for the server
 type Config struct {
-	Buffer       int
-	ReqTimeout   time.Duration
-	ThrottleRate time.Duration
-	APIClient    *Client
+	Buffer        int
+	ReqTimeout    time.Duration
+	ThrottleRate  time.Duration
+	MessageClient *Client
 }
 
 // NewServer creates a new server from the given config
 func NewServer(cfg Config) *Server {
 	return &Server{
-		ServeMux:     http.NewServeMux(),
-		reqCh:        make(chan *Request, cfg.Buffer),
-		reqTimeout:   cfg.ReqTimeout,
-		throttleRate: cfg.ThrottleRate,
-		apiClient:    cfg.APIClient,
+		ServeMux:      http.NewServeMux(),
+		reqCh:         make(chan *Request, cfg.Buffer),
+		reqTimeout:    cfg.ReqTimeout,
+		throttleRate:  cfg.ThrottleRate,
+		messageClient: cfg.MessageClient,
 	}
 }
 
@@ -198,24 +200,44 @@ func (s *Server) processRequest(req *Request) {
 
 	go func() {
 		defer close(done)
-		if s.apiClient == nil {
+		if s.messageClient == nil {
 			res = Response{
 				statusCode: http.StatusInternalServerError,
 				Error:      "Internal error (API client not set)",
 			}
 			return
 		}
-		// Fake the API call
-		time.Sleep(100 * time.Millisecond)
-		res = Response{
-			statusCode: http.StatusCreated,
-			Success:    true,
-			Data: Content{
-				ID:         time.Now().UnixNano(),
-				Recipient:  req.Recipient,
-				Originator: req.Originator,
-				Message:    req.Message,
-			},
+		// Make the API call
+		msgRes, statusCode, err := s.messageClient.createMessage(req)
+		if err != nil {
+			res = Response{
+				statusCode: http.StatusInternalServerError,
+				Error:      "Internal error (API request failed)",
+			}
+			log.Printf("Failed creating SMS message through API for request %#v; Error: %v\n", req, err)
+			return
+		}
+
+		switch v := msgRes.(type) {
+		case MessageCreated:
+			res = Response{
+				statusCode: statusCode,
+				Success:    true,
+				Data: Content{
+					ID:         v.ID,
+					Originator: v.Originator,
+					Message:    v.Body,
+					Created:    v.CreatedDateTime,
+					Recipient:  v.Recipients.Items[0].Recipient,
+					Status:     v.Recipients.Items[0].Status,
+				},
+			}
+		case MessageErrors:
+			res = Response{
+				statusCode: statusCode,
+				Success:    false,
+				Error:      v.Errors[0].Description,
+			}
 		}
 	}()
 

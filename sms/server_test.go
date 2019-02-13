@@ -22,11 +22,12 @@ func TestServer_createMessage(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		httpMethod   string
-		path         string
-		payload      io.Reader
-		serverConfig sms.Config
-		want         wantType
+		httpMethod    string
+		path          string
+		payload       io.Reader
+		serverConfig  sms.Config
+		clientOptions sms.Options
+		want          wantType
 	}{
 		"HTTP Method not allowed": {
 			httpMethod: http.MethodGet,
@@ -154,33 +155,36 @@ func TestServer_createMessage(t *testing.T) {
 			},
 		},
 
-		"API Client not set": {
-			httpMethod: http.MethodPost,
-			path:       "/messages",
-			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
-			serverConfig: sms.Config{
-				Buffer:       10,
-				ReqTimeout:   5 * time.Second,
-				ThrottleRate: time.Second,
-			},
-			want: wantType{
-				statusCode: http.StatusInternalServerError,
-				response: sms.Response{
-					Success: false,
-					Error:   "Internal error (API client not set)",
-				},
-			},
-		},
+		// "API Client not set": {
+		// 	httpMethod: http.MethodPost,
+		// 	path:       "/messages",
+		// 	payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+		// 	serverConfig: sms.Config{
+		// 		Buffer:       10,
+		// 		ReqTimeout:   5 * time.Second,
+		// 		ThrottleRate: time.Second,
+		// 	},
+		// 	want: wantType{
+		// 		statusCode: http.StatusInternalServerError,
+		// 		response: sms.Response{
+		// 			Success: false,
+		// 			Error:   "Internal error (API client not set)",
+		// 		},
+		// 	},
+		// },
 
 		"API request timeout": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
-			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			payload:    strings.NewReader(`{"recipient":31612345678, "originator": "MessageBird", "message": "This is a test message"}`),
 			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   500 * time.Millisecond,
 				ThrottleRate: time.Second,
-				APIClient:    &sms.Client{},
+			},
+			clientOptions: sms.Options{
+				AccessKey: "fake_key",
+				Timeout:   10 * time.Second,
 			},
 			want: wantType{
 				statusCode: http.StatusRequestTimeout,
@@ -191,23 +195,47 @@ func TestServer_createMessage(t *testing.T) {
 			},
 		},
 
-		"Created SMS": {
+		"Failed creating SMS due to invalid access key": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
-			payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
+			payload:    strings.NewReader(`{"recipient":31612345678, "originator": "MessageBird", "message": "This is a test message"}`),
 			serverConfig: sms.Config{
 				Buffer:       10,
 				ReqTimeout:   5 * time.Second,
 				ThrottleRate: time.Second,
-				APIClient:    &sms.Client{},
+			},
+			clientOptions: sms.Options{
+				AccessKey: "fake_key",
+				Timeout:   10 * time.Second,
+			},
+			want: wantType{
+				statusCode: http.StatusUnauthorized,
+				response: sms.Response{
+					Success: false,
+					Error:   "Request not allowed (incorrect access_key)",
+				},
+			},
+		},
+
+		"Created SMS": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":31612345678, "originator": "MessageBird", "message": "This is a test message"}`),
+			serverConfig: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
+			clientOptions: sms.Options{
+				AccessKey: "test_gshuPaZoeEG6ovbc8M79w0QyM",
+				Timeout:   10 * time.Second,
 			},
 			want: wantType{
 				statusCode: http.StatusCreated,
 				response: sms.Response{
 					Success: true,
 					Data: sms.Content{
-						ID:         123,
-						Recipient:  1234567890,
+						Recipient:  31612345678,
 						Originator: "MessageBird",
 						Message:    "This is a test message",
 					},
@@ -220,6 +248,9 @@ func TestServer_createMessage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := httptest.NewRequest(tc.httpMethod, tc.path, tc.payload)
 			w := httptest.NewRecorder()
+
+			c := sms.NewClient(tc.clientOptions)
+			tc.serverConfig.MessageClient = c
 
 			srv := sms.NewServer(tc.serverConfig)
 			srv.Run()
