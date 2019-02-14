@@ -135,6 +135,3 @@ func (c *Client) createMessage(r *Request) (interface{}, int, error) {
 
 	return data, res.StatusCode, nil
 }
-
-// SendMessasge ...
-var SendMessasge = (*Client).createMessage
