@@ -205,6 +205,7 @@ func (s *Server) processRequest(req *Request) {
 	go func() {
 		defer close(done)
 		if s.messageClient == nil {
+			// In theory, this should never happen
 			res = Response{
 				statusCode: http.StatusInternalServerError,
 				Error:      "Internal error (API client not set)",

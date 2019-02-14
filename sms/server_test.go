@@ -158,24 +158,6 @@ func TestServer_createMessage(t *testing.T) {
 			},
 		},
 
-		// "API Client not set": {
-		// 	httpMethod: http.MethodPost,
-		// 	path:       "/messages",
-		// 	payload:    strings.NewReader(`{"recipient":1234567890, "originator": "MessageBird", "message": "This is a test message"}`),
-		// 	serverConfig: sms.Config{
-		// 		Buffer:       10,
-		// 		ReqTimeout:   5 * time.Second,
-		// 		ThrottleRate: time.Second,
-		// 	},
-		// 	want: wantType{
-		// 		statusCode: http.StatusInternalServerError,
-		// 		response: sms.Response{
-		// 			Success: false,
-		// 			Error:   "Internal error (API client not set)",
-		// 		},
-		// 	},
-		// },
-
 		"API request timeout": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",

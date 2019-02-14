@@ -17,6 +17,9 @@ const keyHeaderName = "AccessKey"
 // NewTestServer starts a new development server
 // The purpose of this server is to mimic the send SMS messagebird API behaviour
 // It uses only a subset of the JSON response data coming from messagebird
+// The server would normally need to treat also the error cases when the payload
+// contains invalid input. This test server is oversimplified also because of the fact
+// that the application does input validation before hiting the API.
 func NewTestServer(t *testing.T, accessKey string) *httptest.Server {
 	t.Helper()
 
