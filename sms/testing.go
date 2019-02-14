@@ -3,7 +3,6 @@ package sms
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -20,6 +19,7 @@ const keyHeaderName = "AccessKey"
 // The server would normally need to treat also the error cases when the payload
 // contains invalid input. This test server is oversimplified also because of the fact
 // that the application does input validation before hiting the API.
+// Parameter accessKey is what is considered by the test server to be the right access key
 func NewTestServer(t *testing.T, accessKey string) *httptest.Server {
 	t.Helper()
 
@@ -71,19 +71,19 @@ func NewTestServer(t *testing.T, accessKey string) *httptest.Server {
 			w.Header().Set("Accept", "application/json")
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(&errRes); err != nil {
-				log.Fatalf("Could not encode value %#v; Error: %v", errRes, err)
+				t.Fatalf("Could not encode value %#v; Error: %v", errRes, err)
 			}
 
 			return
 		}
 
 		if err := r.ParseForm(); err != nil {
-			log.Fatalf("Could not parse incoming form request %#v; Error: %v", r, err)
+			t.Fatalf("Could not parse incoming form request %#v; Error: %v", r, err)
 		}
 
 		recp, err := strconv.ParseInt(r.FormValue("recipients"), 10, 64)
 		if err != nil {
-			log.Fatalf("Could not convert recipients to int64 %s; Error: %v", r.FormValue("recipients"), err)
+			t.Fatalf("Could not convert recipients to int64 %s; Error: %v", r.FormValue("recipients"), err)
 		}
 
 		okRes := MessageCreated{
@@ -109,7 +109,7 @@ func NewTestServer(t *testing.T, accessKey string) *httptest.Server {
 		w.Header().Set("Accept", "application/json")
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&okRes); err != nil {
-			log.Fatalf("Could not encode value %#v; Error: %v", okRes, err)
+			t.Fatalf("Could not encode value %#v; Error: %v", okRes, err)
 		}
 	}
 
