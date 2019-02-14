@@ -16,6 +16,9 @@ import (
 
 func TestServer_createMessage(t *testing.T) {
 
+	testServer := sms.NewTestServer(t, "server_key")
+	defer testServer.Close()
+
 	type wantType struct {
 		statusCode int
 		response   sms.Response
@@ -195,6 +198,29 @@ func TestServer_createMessage(t *testing.T) {
 			},
 		},
 
+		"Failed creating SMS due to missing access key": {
+			httpMethod: http.MethodPost,
+			path:       "/messages",
+			payload:    strings.NewReader(`{"recipient":31612345678, "originator": "MessageBird", "message": "This is a test message"}`),
+			serverConfig: sms.Config{
+				Buffer:       10,
+				ReqTimeout:   5 * time.Second,
+				ThrottleRate: time.Second,
+			},
+			clientOptions: sms.Options{
+				BaseURL:   testServer.URL,
+				AccessKey: "",
+				Timeout:   10 * time.Second,
+			},
+			want: wantType{
+				statusCode: http.StatusUnauthorized,
+				response: sms.Response{
+					Success: false,
+					Error:   "Request not allowed (incorrect access_key)",
+				},
+			},
+		},
+
 		"Failed creating SMS due to invalid access key": {
 			httpMethod: http.MethodPost,
 			path:       "/messages",
@@ -205,6 +231,7 @@ func TestServer_createMessage(t *testing.T) {
 				ThrottleRate: time.Second,
 			},
 			clientOptions: sms.Options{
+				BaseURL:   testServer.URL,
 				AccessKey: "fake_key",
 				Timeout:   10 * time.Second,
 			},
@@ -227,7 +254,8 @@ func TestServer_createMessage(t *testing.T) {
 				ThrottleRate: time.Second,
 			},
 			clientOptions: sms.Options{
-				AccessKey: "test_gshuPaZoeEG6ovbc8M79w0QyM",
+				BaseURL:   testServer.URL,
+				AccessKey: "server_key", // test_gshuPaZoeEG6ovbc8M79w0QyM
 				Timeout:   10 * time.Second,
 			},
 			want: wantType{

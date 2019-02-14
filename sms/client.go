@@ -12,39 +12,28 @@ import (
 
 const defaultBaseURL = "https://rest.messagebird.com"
 
-// Client sends requests to the SMS API
-type Client struct {
-	accessKey  string
-	baseURL    string
-	httpClient *http.Client
-}
-
-// Options is a collection of client options
-type Options struct {
-	AccessKey string
-	BaseURL   string
-	Timeout   time.Duration
-}
-
 // MessageCreated is the API mapping for a succesfully created message
 type MessageCreated struct {
 	ID              string            `json:"id"`
 	Originator      string            `json:"originator"`
 	Body            string            `json:"body"`
 	Recipients      MessageRecipients `json:"recipients"`
-	CreatedDateTime string            `json:"createdDatetime"`
+	CreatedDateTime time.Time         `json:"createdDatetime"`
 }
 
 // MessageRecipients contains relevant information about every recipient
 type MessageRecipients struct {
-	Items []MessageItem `json:"items"`
+	TotalSentCount           int           `json:"totalSentCount"`
+	TotalDeliveredCount      int           `json:"totalDeliveredCount"`
+	TotalDeliveryFailedCount int           `json:"totalDeliveryFailedCount"`
+	Items                    []MessageItem `json:"items"`
 }
 
 // MessageItem containts relevant information for a given recipient
 type MessageItem struct {
-	Recipient      int64  `json:"recipient"`
-	Status         string `json:"status"`
-	StatusDateTime string `json:"statusDatetime"`
+	Recipient      int64     `json:"recipient"`
+	Status         string    `json:"status"`
+	StatusDateTime time.Time `json:"statusDatetime"`
 }
 
 // MessageErrors is the errors bag API response for a failed create message action
@@ -57,6 +46,20 @@ type MessageError struct {
 	Code        int    `json:"code"`
 	Description string `json:"description"`
 	Parameter   string `json:"parameter"`
+}
+
+// Client sends requests to the SMS API
+type Client struct {
+	accessKey  string
+	baseURL    string
+	httpClient *http.Client
+}
+
+// Options is a collection of client options
+type Options struct {
+	AccessKey string
+	BaseURL   string
+	Timeout   time.Duration
 }
 
 // NewClient creates a new client from the given options
@@ -95,19 +98,19 @@ func (c *Client) createMessage(r *Request) (interface{}, int, error) {
 
 	req, err := http.NewRequest(http.MethodPost, endpoint, payload)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("Cannot create POST request for url %s; Error: %v", endpoint, err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("Could not create POST request for url %s; Error: %v", endpoint, err)
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("AccessKey %s", c.accessKey))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("Cannot get response for request %#v; Error: %v", req, err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("Could not get response for request %#v; Error: %v", req, err)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, http.StatusInternalServerError, fmt.Errorf("Cannot read response body %#v; Error: %v", res, err)
+		return nil, http.StatusInternalServerError, fmt.Errorf("Could not read response body %#v; Error: %v", res, err)
 	}
 	defer res.Body.Close()
 
@@ -132,3 +135,6 @@ func (c *Client) createMessage(r *Request) (interface{}, int, error) {
 
 	return data, res.StatusCode, nil
 }
+
+// SendMessasge ...
+var SendMessasge = (*Client).createMessage

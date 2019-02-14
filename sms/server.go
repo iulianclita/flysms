@@ -42,6 +42,7 @@ type Response struct {
 type Server struct {
 	*http.ServeMux
 	reqCh         chan *Request
+	done          chan struct{}
 	buf           int
 	reqTimeout    time.Duration
 	throttleRate  time.Duration
@@ -61,12 +62,14 @@ func NewServer(cfg Config) *Server {
 	return &Server{
 		ServeMux:      http.NewServeMux(),
 		reqCh:         make(chan *Request, cfg.Buffer),
+		done:          make(chan struct{}),
 		reqTimeout:    cfg.ReqTimeout,
 		throttleRate:  cfg.ThrottleRate,
 		messageClient: cfg.MessageClient,
 	}
 }
 
+// createMessage is the HTTP handler for message creation
 func (s *Server) createMessage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var res Response
@@ -180,7 +183,7 @@ func (s *Server) createMessage() http.HandlerFunc {
 	}
 }
 
-// Run starts the server
+// Run the server
 func (s *Server) Run() {
 	s.HandleFunc("/messages", s.createMessage())
 	go s.handleRequests()
@@ -188,6 +191,7 @@ func (s *Server) Run() {
 
 func (s *Server) handleRequests() {
 	ticker := time.Tick(s.throttleRate)
+
 	for req := range s.reqCh {
 		<-ticker
 		go s.processRequest(req)
@@ -227,7 +231,7 @@ func (s *Server) processRequest(req *Request) {
 					ID:         v.ID,
 					Originator: v.Originator,
 					Message:    v.Body,
-					Created:    v.CreatedDateTime,
+					Created:    v.CreatedDateTime.Format(time.RFC3339),
 					Recipient:  v.Recipients.Items[0].Recipient,
 					Status:     v.Recipients.Items[0].Status,
 				},
@@ -260,6 +264,6 @@ func sendResponse(w http.ResponseWriter, res Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Accept", "application/json")
 	if err := json.NewEncoder(w).Encode(&res); err != nil {
-		log.Fatalf("Cannot encode value %#v; Error: %v", res, err)
+		log.Fatalf("Could not encode value %#v; Error: %v", res, err)
 	}
 }

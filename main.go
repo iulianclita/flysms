@@ -31,21 +31,24 @@ func main() {
 	srv.Run()
 
 	// TEST
+	opts = sms.Options{
+		AccessKey: "a2joQy9zlSaJg2UdrMV7HnsZt", // a2joQy9zlSaJg2UdrMV7HnsZt fake_key
+		Timeout:   10 * time.Second,
+	}
 
-	// opts = sms.Options{
-	// 	AccessKey: "test_gshuPaZoeEG6ovbc8M79w0QyM", // test_gshuPaZoeEG6ovbc8M79w0QyM fake_key
-	// 	Timeout:   10 * time.Second,
-	// }
+	c := sms.NewClient(opts)
 
-	// c := sms.NewClient(opts)
+	r := &sms.Request{
+		Recipient:  40724423589,
+		Originator: "+40724423589",
+		Message:    "Hi! This is your first message.",
+	}
 
-	// r := &sms.Request{
-	// 	Recipient:  31612345678,
-	// 	Originator: "John Rambo",
-	// 	Message:    "This is a test message",
-	// }
+	data, statusCode, err := sms.SendMessasge(c, r)
 
-	// c.CreateMessage(r)
+	fmt.Printf("DATA: %#v\n", data)
+	fmt.Printf("STATUS CODE: %#v\n", statusCode)
+	fmt.Printf("ERROR: %#v\n", err)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), srv); err != nil {
 		log.Fatal("Failed to start server")
