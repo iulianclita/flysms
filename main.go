@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/iulianclita/messagebird/sms"
+	"github.com/iulianclita/flysms/sms"
 )
 
 const port = 3500

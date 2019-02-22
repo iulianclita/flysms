@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iulianclita/messagebird/sms"
+	"github.com/iulianclita/flysms/sms"
 )
 
 func TestServer_createMessage(t *testing.T) {

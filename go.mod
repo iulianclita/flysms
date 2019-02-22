@@ -1,1 +1,1 @@
-module github.com/iulianclita/messagebird
+module github.com/iulianclita/flysms

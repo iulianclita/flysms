@@ -3,7 +3,7 @@ package sms_test
 import (
 	"testing"
 
-	"github.com/iulianclita/messagebird/sms"
+	"github.com/iulianclita/flysms/sms"
 )
 
 func TestClient_URL(t *testing.T) {
