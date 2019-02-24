@@ -193,8 +193,12 @@ func (s *Server) handleRequests() {
 	ticker := time.Tick(s.throttleRate)
 
 	for req := range s.reqCh {
-		<-ticker
-		go s.processRequest(req)
+		select {
+		case <-ticker:
+			go s.processRequest(req)
+		case <-req.ctx.Done():
+			log.Println("The API request timed out")
+		}
 	}
 }
 
