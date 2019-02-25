@@ -197,7 +197,7 @@ func (s *Server) handleRequests() {
 		case <-ticker:
 			go s.processRequest(req)
 		case <-req.ctx.Done():
-			log.Println("The API request timed out")
+			log.Println("The API request was cancelled:", req.ctx.Err())
 		}
 	}
 }
@@ -260,7 +260,7 @@ func (s *Server) processRequest(req *Request) {
 			log.Printf("Failed to send response %#v for request %#v\n", res, req)
 		}
 	case <-req.ctx.Done():
-		log.Println("The API request timed out")
+		log.Println("The API request was cancelled:", req.ctx.Err())
 	}
 }
 
