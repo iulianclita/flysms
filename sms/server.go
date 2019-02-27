@@ -189,6 +189,9 @@ func (s *Server) Run() {
 	go s.handleRequests()
 }
 
+// handleRequests starts fetches requests from the buffer
+// and throttles them when accesing the external API
+// It also deals with request cancellation (deadline)
 func (s *Server) handleRequests() {
 	ticker := time.Tick(s.throttleRate)
 
@@ -202,6 +205,8 @@ func (s *Server) handleRequests() {
 	}
 }
 
+// processRequest makes a request to the external API
+// It also deals with request cancellation (deadline)
 func (s *Server) processRequest(req *Request) {
 	done := make(chan struct{})
 	var res Response
@@ -264,6 +269,7 @@ func (s *Server) processRequest(req *Request) {
 	}
 }
 
+// sendResponse delivers the response back to the client
 func sendResponse(w http.ResponseWriter, res Response) {
 	w.WriteHeader(res.statusCode)
 	w.Header().Set("Content-Type", "application/json")
